@@ -1,0 +1,63 @@
+#gunAuth{
+  display : flex;
+  flex-direction : column;
+  align-items : center;
+  margin-top : 10px;
+  padding-bottom: 20px;
+  border : 3px solid #4a35f0;
+  border-radius : 15px;
+  padding : 10px;
+  padding-bottom : 20px;
+  pointer-events : all;
+  width : 450px;
+}
+
+.gunAuthHeader{
+  text-align : center;
+  color : #4a35f0;
+  margin-top : 5px;
+  margin-bottom : 10px;
+}
+
+#gunAuth input{
+  padding : 5px;
+  font-size : 16px;
+  font-weight : bold;
+  margin-top : 5px;
+  border-radius : 10px;
+  text-align : center;
+  border : 3px solid #1d80a2;
+  width : 250px;
+}
+
+.gunAuthLogin{
+  color : white;
+  font-weight : bold;
+  padding : 5px 8px;
+  border : 3px solid #3d8eec;
+  text-align : center;
+  margin-top : 15px;
+  width : 250px;
+  background : #7a69ff;
+  cursor : pointer;
+}
+
+.gunAuthLogin:hover{
+  background : #9a8dff;
+}
+
+.gunAuthRegister{
+  margin-top : 5px;
+  color : white;
+  padding : 5px 8px;
+  border : 3px solid #3d8eec;
+  font-weight : bold;
+  text-align : center;
+  background : #4a35f0;
+  cursor : pointer;
+  width : 250px;
+}
+
+.gunAuthRegister:hover{
+  background : #9a8dff;
+}

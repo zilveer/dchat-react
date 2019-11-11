@@ -1,26 +1,46 @@
-import React from 'react';
-import logo from './logo.svg';
+import React, { Component } from 'react';
+// import logo from './logo.svg';
 import './App.css';
+import Gun from 'gun/gun';
+import GunAuth from './auth/auth.js';
+import GunChat from './chat/chat.js';
 
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+require('gun/sea');
+
+//URL should be replaced with Unstoppable's GUN Server.
+const gun = new Gun('https://www.raygun.live/gun');
+
+class App extends Component {
+
+  constructor(props){
+    super(props)
+    this.state = {
+      user : gun.user(),
+    }
+  }
+
+  componentDidMount(){
+    gun.on('auth', () => {
+      document.getElementById('gunAuth').style.display = 'none';
+      document.getElementById('gunChat').style.display = 'flex';
+      //document.getElementById('gunPrivateChat').style.display = 'flex';
+    })
+    gun.user().recall({sessionStorage : true});
+  }
+
+  render() {
+    return (
+      <div className="gunChatApp">
+
+        <h1 className="gunChatHeader">Unstoppable Chat!</h1>
+
+        <GunAuth gun={gun} />
+        <GunChat gun={gun}/>
+
+      </div>
+    );
+  }
+
 }
 
 export default App;
