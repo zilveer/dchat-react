@@ -1,4 +1,5 @@
 import React, { Component } from 'react';
+import Gun from 'gun/gun';
 import './chat.css'
 import GunContacts from './contacts/contacts.js';
 
@@ -11,7 +12,9 @@ class GunChat extends Component {
     this.sendMessage = this.sendMessage.bind(this);
     this.handleMsgSubmitClick = this.handleMsgSubmitClick.bind(this);
     this.state = {
-      otherPeer : null
+      userGunChat : null,
+      otherPeer : null,
+      otherPeerChat : null
     }
   }
 
@@ -21,11 +24,12 @@ class GunChat extends Component {
     gun.get('~@' + username).once((peerData, key) => {
       if(peerData){
         let pubKey = Object.keys(peerData)[1].substr(1);
-        //SET UP CONNECTIONS FOR OUR GUN DATA
-        let userGunChat = gun.user().get('chat').get(username);
-        this.setState({otherPeer : username});
-        //SET UP CONNECTION FOR OTHER USER's GUN DATA
-        let privateGun = gun.user(pubKey).get('chat').get(gun.user().is.alias);
+        //SET UP STATE FOR OUR GUN DATA NODES
+        this.setState({
+          userGunChat : gun.user().get('pchat').get(username),
+          otherPeer : gun.user(pubKey),
+          otherPeerChat : gun.user(pubKey).get('pchat').get(gun.user().is.alias)
+        });
 
         //EMPTY THE MESSAGE LIST
         let msgList = document.getElementById('msgContainerList');
@@ -34,32 +38,45 @@ class GunChat extends Component {
         }
         let loadedMsgs = {};
 
-        //LOAD OUR CHAT DATA
-        userGunChat.on((d) => {
-          for(let time in d){
-            if(!loadedMsgs[time]){
-              userGunChat.get(time).on((msg) => {
-                loadedMsgs[time] = msg;
-                if(msg && msg.msg && msg.user){
-                  this.addMessageToChat(msg);
-                }
-              })
-            }
-          }
-        })
 
-        //LOAD OTHER USER's CHAT DATA
-        privateGun.on((d) => {
-          for(let time in d){
-            if(!loadedMsgs[time]){
-              privateGun.get(time).on((msg) => {
-                loadedMsgs[time] = msg;
-                if(msg && msg.msg && msg.user){
-                  this.addMessageToChat(msg);
-                }
-              })
+        this.state.otherPeer.then((u) => {
+          //LOAD OUR CHAT DATA
+          this.state.userGunChat.on((d) => {
+            for(let time in d){
+              if(!loadedMsgs[time]){
+                this.state.userGunChat.get(time).on((msg) => {
+                  Gun.SEA.secret(u.epub, gun.user().pair()).then((sec) => {
+                    Gun.SEA.decrypt(msg.msg, sec).then((decMsg) => {
+                      msg.msg = decMsg;
+                      loadedMsgs[time] = msg;
+                      if(msg && msg.msg && msg.user){
+                        this.addMessageToChat(msg);
+                      }
+                    })
+                  })
+                })
+              }
             }
-          }
+          })
+
+          //LOAD OTHER USER's CHAT DATA
+          this.state.otherPeerChat.on((d) => {
+            for(let time in d){
+              if(!loadedMsgs[time]){
+                this.state.otherPeerChat.get(time).on((msg) => {
+                  Gun.SEA.secret(u.epub, gun.user().pair()).then((sec) => {
+                    Gun.SEA.decrypt(msg.msg, sec).then((decMsg) => {
+                      msg.msg = decMsg;
+                      loadedMsgs[time] = msg;
+                      if(msg && msg.msg && msg.user){
+                        this.addMessageToChat(msg);
+                      }
+                    })
+                  })
+                })
+              }
+            }
+          })
         })
       }
     })
@@ -104,10 +121,17 @@ class GunChat extends Component {
       msgInput.value = "";
       msgInput.blur();
       let time = Date.now();
-      gun.user().get('chat').get(this.state.otherPeer).get(time).put({
-        msg : msg,
-        user : gun.user().is.alias,
-        time : time
+      //ENCRYPT OUR MESSAGE
+      this.state.otherPeer.then((u) => {
+        Gun.SEA.secret(u.epub, gun.user().pair()).then((sec) => {
+          Gun.SEA.encrypt(msg, sec).then((encMsg) => {
+            this.state.userGunChat.get(time).put({
+              msg : encMsg,
+              user : gun.user().is.alias,
+              time : time
+            })
+          })
+        })
       })
     }
   }
