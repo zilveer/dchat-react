@@ -1,3 +1,12 @@
+# App Log
+
+Day 1 - Private Chat
+
+1. Replicate jamie chat w/private "room" for chatting.
+2. Encrypt at rest in private room.
+
+Current Users
+
 ```json
 {
   "braden.crypto": "password",
@@ -6,5 +15,11 @@
 }
 ```
 
-1. Replicate jamie chat w/private "room" for chatting.
-2. Encrypt at rest in private room.
+Day 2-? - Private Groups/Channels
+
+1. Section for one to one private chat.
+2. Section above that for making group chats.
+3. First unencrypted groups that don't dynamically get added or leave.
+4. Second add ability to leave group.
+5. Add encryption via SEA.js (Also ask mark?).
+6. Add ability to join group. (Everybody can add another person to the group).
