@@ -152,6 +152,8 @@ class GunChat extends Component {
 
     const addMessageToChat = this.addMessageToChat;
 
+    const channelSec = await Gun.SEA.secret(channel.key, channel.pair);
+
     let thisComp = this;
     async function loadChatOfNode(node){
       node.on((nodeData) => {
@@ -159,10 +161,9 @@ class GunChat extends Component {
           if(!loadedMsgs[time]){
             node.get(time).on(async function(msgData){
               console.log(msgData.msg)
-              const sec = await Gun.SEA.secret(channelKey, gun.user()._.sea);
               let decMsg;
               if(typeof msgData.msg == 'object'){
-                decMsg = await Gun.SEA.decrypt(msgData.msg, sec);
+                decMsg = await Gun.SEA.decrypt(msgData.msg, channelSec);
                 msgData.msg = decMsg;
               }else{
                 decMsg = msgData.msg;
@@ -193,7 +194,7 @@ class GunChat extends Component {
 
   }
 
-  async sendMessageToChannel(msg, channel){
+  async sendMessageToChannel(msg, channel, newPeer=null){
     let gun = this.props.gun;
     if(msg.length > 0){
       let msgInput = document.getElementById('msgInput');
@@ -201,12 +202,19 @@ class GunChat extends Component {
       msgInput.blur();
       let time = Date.now();
       //ENCRYPT OUR MESSAGE WITH CHANNEL KEY
-      // const sec = await Gun.SEA.secret(channel.key, gun.user()._.sea);
-      // const encMsg = await Gun.SEA.encrypt(msg, sec);
-      this.state.userGunChat.get(time).put({
-        msg : msg,
+      const sec = await Gun.SEA.secret(channel.key, channel.pair);
+      const encMsg = await Gun.SEA.encrypt(msg, sec);
+      const channelChat = gun.user().get('pchannel').get(channel.key).get('chat');
+
+      if(newPeer){
+        newPeer = JSON.stringify(newPeer);
+      }
+
+      channelChat.get(time).put({
+        msg : encMsg,
         user : gun.user().is.alias,
         time : time,
+        newPeer : newPeer
       })
     }
   }
@@ -241,6 +249,14 @@ class GunChat extends Component {
       })
     }
 
+    if(msg.newPeer && this.state.currentChannel){
+      if(typeof msg.newPeer == 'string'){
+        msg.newPeer = JSON.parse(msg.newPeer)
+      }
+      let gun = this.props.gun;
+      gun.user().get('pchannel').get(this.state.currentChannel.key).get('peers').get(msg.newPeer.pubKey).put(msg.newPeer.alias);
+    }
+
     let msgList = document.getElementById('msgContainerList');
     msgList.appendChild(newMsg);
 
@@ -255,32 +271,45 @@ class GunChat extends Component {
     msgList.scrollTo(0, msgList.scrollHeight);
   }
 
-  invitePeerToChannel(alias){
+  async invitePeerToChannel(alias){
     //Clear invite form
     let gun = this.props.gun;
     let currentChannel = this.state.currentChannel
     document.getElementById('channelInviteInput').value = "";
-    this.connectToPrivatePeer(alias, (peerPubKey) => {
-      let newMsg = "You are invited to join " + currentChannel.name;
-      this.sendMessageToPrivatePeer(newMsg, currentChannel);
-      gun.user().get('pchannel').get(currentChannel.key).get('peers').get(peerPubKey).put(alias);
-    });
+
+    //GET PUBKEY OF USER BY ALIAS
+    const peerByAliasData = await gun.get('~@' + alias).once();
+    if(peerByAliasData){
+      const peerPubKey = Object.keys(peerByAliasData)[1].substr(1);
+      let newPeerMsg = alias + " has been invited to this chat.";
+      this.sendMessageToChannel(newPeerMsg, currentChannel, {pubKey : peerPubKey, alias : alias});
+      this.connectToPrivatePeer(alias, (peerPubKey) => {
+        let inviteMsg = "You are invited to join " + currentChannel.name;
+        currentChannel['invitedBy'] = gun.user().is.pub;
+        this.sendMessageToPrivatePeer(inviteMsg, currentChannel);
+        gun.user().get('pchannel').get(currentChannel.key).get('peers').get(peerPubKey).put(alias);
+      });
+    }
   }
 
-  joinChannel(channel){
+  async joinChannel(channel){
     let gun = this.props.gun;
     gun.user().get('pchannel').get(channel.key).get('name').put(channel.name);
+
+    let sec = await Gun.SEA.secret(channel.key, gun.user()._.sea);
+    let encPair = await Gun.SEA.encrypt(JSON.stringify(channel.pair), sec);
+    gun.user().get('pchannel').get(channel.key).get('pair').put(encPair);
     //GET ALL PEERS IN OWNER's CHANNEL
     let loadedPeers = {};
-    gun.user(channel.owner).get('pchannel').get(channel.key).get('peers').on((peers) => {
+    let connectToChannel = this.connectToChannel;
+    gun.user(channel.invitedBy).get('pchannel').get(channel.key).get('peers').once(async function(peers){
       for(let pubKey in peers){
         if(typeof peers[pubKey] == 'string' && !loadedPeers[pubKey]){
           loadedPeers[pubKey] = peers[pubKey];
-          gun.user().get('pchannel').get(channel.key).get('peers').get(pubKey).put(peers[pubKey], () => {
-            this.connectToChannel(channel)
-          });
+          await gun.user().get('pchannel').get(channel.key).get('peers').get(pubKey).put(peers[pubKey]);
         }
       }
+      connectToChannel(channel)
     })
   }
 

@@ -38,8 +38,18 @@ class GunContacts extends Component {
               let channelList = document.getElementById('channelsList');
               channelList.appendChild(newChannelEl);
               newChannelEl.addEventListener('click', () => {
-                gun.user().get('pchannel').get(channelKey).get('owner').once((owner) => {
-                  connectToChannel({key : channelKey, name : channelName, owner : owner});
+                gun.user().get('pchannel').get(channelKey).get('pair').once(async function(ePair){
+                  console.log("Channel Pair", ePair);
+                  if(typeof ePair == 'string'){
+                    ePair = JSON.parse(ePair);
+                  }
+                  let sec = await Gun.SEA.secret(channelKey, gun.user()._.sea);
+                  let pair = await Gun.SEA.decrypt(ePair, sec);
+                  connectToChannel({
+                    key : channelKey,
+                    name : channelName,
+                    pair : pair,
+                  });
                 })
               })
             })
@@ -56,6 +66,9 @@ class GunContacts extends Component {
     //GENERATE A RANDOM KEY FOR THE NEW CHANNEL
     let channelPair = await Gun.SEA.pair()
     let channelKey = channelPair.epub;
+    let sec = await Gun.SEA.secret(channelKey, gun.user()._.sea);
+    let encPair = await Gun.SEA.encrypt(JSON.stringify(channelPair), sec);
+    gun.user().get('pchannel').get(channelKey).get('pair').put(encPair);
     gun.user().get('pchannel').get(channelKey).get('name').put(channelName);
     gun.user().get('pchannel').get(channelKey).get('owner').put(gun.user().is.pub);
     gun.user().get('pchannel').get(channelKey).get('peers').get(gun.user().is.pub).put(gun.user().is.alias);
