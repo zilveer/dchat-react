@@ -13,6 +13,7 @@ class GunChat extends Component {
     this.sendMessageToChannel = this.sendMessageToChannel.bind(this);
     this.addMessageToChat = this.addMessageToChat.bind(this);
     this.invitePeerToChannel = this.invitePeerToChannel.bind(this);
+    this.joinChannel = this.joinChannel.bind(this);
     this.handleMsgSubmitClick = this.handleMsgSubmitClick.bind(this);
     this.handleInviteClick = this.handleInviteClick.bind(this);
     this.state = {
@@ -34,7 +35,7 @@ class GunChat extends Component {
     if(peerByAliasData){
 
       const peerPubKey = Object.keys(peerByAliasData)[1].substr(1);
-
+      // gun.user().get('pchat').put(null)
       //SET UP STATE FOR OUR GUN DATA NODES
       this.setState({
         userGunChat : gun.user().get('pchat').get(username),
@@ -63,6 +64,7 @@ class GunChat extends Component {
       const addMessageToChat = this.addMessageToChat;
 
       let loadedMsgs = {};
+      let thisComp = this;
 
       async function loadChatOfNode(node){
         node.on((nodeData) => {
@@ -79,7 +81,9 @@ class GunChat extends Component {
                 }
                 loadedMsgs[time] = msgData;
                 if(msgData && msgData.msg && msgData.user){
-                  addMessageToChat(msgData);
+                  if(thisComp.state.otherPeer == gun.user(peerPubKey)){
+                    addMessageToChat(msgData);
+                  }
                 }
               });
             }
@@ -92,7 +96,7 @@ class GunChat extends Component {
       loadChatOfNode(this.state.otherPeerChat);
 
       if(cb && typeof cb == 'function'){
-        cb()
+        cb(peerPubKey)
       };
 
     }
@@ -115,7 +119,7 @@ class GunChat extends Component {
         msg : encMsg,
         user : gun.user().is.alias,
         time : time,
-        channel : channel
+        channel : JSON.stringify(channel)
       })
     }
   }
@@ -148,12 +152,13 @@ class GunChat extends Component {
 
     const addMessageToChat = this.addMessageToChat;
 
+    let thisComp = this;
     async function loadChatOfNode(node){
       node.on((nodeData) => {
         for(let time in nodeData){
           if(!loadedMsgs[time]){
             node.get(time).on(async function(msgData){
-              // console.log(msgData.msg)
+              console.log(msgData.msg)
               const sec = await Gun.SEA.secret(channelKey, gun.user()._.sea);
               let decMsg;
               if(typeof msgData.msg == 'object'){
@@ -163,7 +168,7 @@ class GunChat extends Component {
                 decMsg = msgData.msg;
               }
               loadedMsgs[time] = msgData;
-              if(msgData && msgData.msg && msgData.user){
+              if(msgData && msgData.msg && msgData.user && thisComp.state.currentChannel == channel){
                 addMessageToChat(msgData);
               }
             });
@@ -188,7 +193,7 @@ class GunChat extends Component {
 
   }
 
-  async sendMessageToChannel(msg, channelKey){
+  async sendMessageToChannel(msg, channel){
     let gun = this.props.gun;
     if(msg.length > 0){
       let msgInput = document.getElementById('msgInput');
@@ -196,10 +201,10 @@ class GunChat extends Component {
       msgInput.blur();
       let time = Date.now();
       //ENCRYPT OUR MESSAGE WITH CHANNEL KEY
-      const sec = await Gun.SEA.secret(channelKey, gun.user()._.sea);
-      const encMsg = await Gun.SEA.encrypt(msg, sec);
+      // const sec = await Gun.SEA.secret(channel.key, gun.user()._.sea);
+      // const encMsg = await Gun.SEA.encrypt(msg, sec);
       this.state.userGunChat.get(time).put({
-        msg : encMsg,
+        msg : msg,
         user : gun.user().is.alias,
         time : time,
       })
@@ -227,6 +232,13 @@ class GunChat extends Component {
     if(msg.channel){
       newMsg.className = 'msg channelInvite';
       newMsgText.className = 'channelInviteText';
+      let joinChannel = this.joinChannel
+      newMsg.addEventListener('click', function(){
+        if(typeof msg.channel == 'string'){
+          msg.channel = JSON.parse(msg.channel);
+        }
+        joinChannel(msg.channel);
+      })
     }
 
     let msgList = document.getElementById('msgContainerList');
@@ -248,10 +260,28 @@ class GunChat extends Component {
     let gun = this.props.gun;
     let currentChannel = this.state.currentChannel
     document.getElementById('channelInviteInput').value = "";
-    this.connectToPrivatePeer(alias, () => {
+    this.connectToPrivatePeer(alias, (peerPubKey) => {
       let newMsg = "You are invited to join " + currentChannel.name;
-      this.sendMessageToPrivatePeer(newMsg, currentChannel)
+      this.sendMessageToPrivatePeer(newMsg, currentChannel);
+      gun.user().get('pchannel').get(currentChannel.key).get('peers').get(peerPubKey).put(alias);
     });
+  }
+
+  joinChannel(channel){
+    let gun = this.props.gun;
+    gun.user().get('pchannel').get(channel.key).get('name').put(channel.name);
+    //GET ALL PEERS IN OWNER's CHANNEL
+    let loadedPeers = {};
+    gun.user(channel.owner).get('pchannel').get(channel.key).get('peers').on((peers) => {
+      for(let pubKey in peers){
+        if(typeof peers[pubKey] == 'string' && !loadedPeers[pubKey]){
+          loadedPeers[pubKey] = peers[pubKey];
+          gun.user().get('pchannel').get(channel.key).get('peers').get(pubKey).put(peers[pubKey], () => {
+            this.connectToChannel(channel)
+          });
+        }
+      }
+    })
   }
 
   handleMsgSubmitClick(e){

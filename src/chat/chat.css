@@ -95,6 +95,10 @@
   cursor: pointer;
 }
 
+.channelInvite:hover{
+  background : #fffef4;
+}
+
 .channelInviteText{
   color : #4a35f0;
   text-decoration: underline;

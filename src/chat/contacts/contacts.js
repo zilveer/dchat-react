@@ -38,7 +38,9 @@ class GunContacts extends Component {
               let channelList = document.getElementById('channelsList');
               channelList.appendChild(newChannelEl);
               newChannelEl.addEventListener('click', () => {
-                connectToChannel({key : channelKey, name : channelName});
+                gun.user().get('pchannel').get(channelKey).get('owner').once((owner) => {
+                  connectToChannel({key : channelKey, name : channelName, owner : owner});
+                })
               })
             })
           }
@@ -55,6 +57,7 @@ class GunContacts extends Component {
     let channelPair = await Gun.SEA.pair()
     let channelKey = channelPair.epub;
     gun.user().get('pchannel').get(channelKey).get('name').put(channelName);
+    gun.user().get('pchannel').get(channelKey).get('owner').put(gun.user().is.pub);
     gun.user().get('pchannel').get(channelKey).get('peers').get(gun.user().is.pub).put(gun.user().is.alias);
   }
 
