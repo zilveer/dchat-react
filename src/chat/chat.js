@@ -7,79 +7,203 @@ class GunChat extends Component {
 
   constructor(props) {
     super(props);
-    this.connectToChat = this.connectToChat.bind(this);
+    this.connectToPrivatePeer = this.connectToPrivatePeer.bind(this);
+    this.sendMessageToPrivatePeer = this.sendMessageToPrivatePeer.bind(this);
+    this.connectToChannel = this.connectToChannel.bind(this);
+    this.sendMessageToChannel = this.sendMessageToChannel.bind(this);
     this.addMessageToChat = this.addMessageToChat.bind(this);
-    this.sendMessage = this.sendMessage.bind(this);
+    this.invitePeerToChannel = this.invitePeerToChannel.bind(this);
     this.handleMsgSubmitClick = this.handleMsgSubmitClick.bind(this);
+    this.handleInviteClick = this.handleInviteClick.bind(this);
     this.state = {
       userGunChat : null,
       otherPeer : null,
-      otherPeerChat : null
+      otherPeerChat : null,
+      privateChat : null,
+      channelChat : null,
+      currentChannel : null,
     }
   }
 
-  connectToChat(username){
+
+  async connectToPrivatePeer(username, cb){
     let gun = this.props.gun;
-    //RECIEVE PUBKEY OF USER BY ALIAS
-    gun.get('~@' + username).once((peerData, key) => {
-      if(peerData){
-        let pubKey = Object.keys(peerData)[1].substr(1);
-        //SET UP STATE FOR OUR GUN DATA NODES
-        this.setState({
-          userGunChat : gun.user().get('pchat').get(username),
-          otherPeer : gun.user(pubKey),
-          otherPeerChat : gun.user(pubKey).get('pchat').get(gun.user().is.alias)
+
+    //RECIEVE PUBKEY OF USER BY ALIAS (Username)
+    const peerByAliasData = await gun.get('~@' + username).once();
+    if(peerByAliasData){
+
+      const peerPubKey = Object.keys(peerByAliasData)[1].substr(1);
+
+      //SET UP STATE FOR OUR GUN DATA NODES
+      this.setState({
+        userGunChat : gun.user().get('pchat').get(username),
+        otherPeer : gun.user(peerPubKey),
+        otherPeerChat : gun.user(peerPubKey).get('pchat').get(gun.user().is.alias),
+        privateChat : true,
+        channelChat : false,
+        currentChannel : null,
+      });
+
+      //EMPTY THE MESSAGE LIST
+      let msgList = document.getElementById('msgContainerList');
+      while (msgList.firstChild) {
+        msgList.firstChild.remove();
+      }
+
+      //UPDATE CHAT NAVBAR
+      let privateMsgNav = document.getElementById('privateMsgNav');
+      privateMsgNav.style.display = 'block';
+      privateMsgNav.textContent = "Talking with " + username;
+      let privateChannelNav = document.getElementById('privateChannelNav');
+      privateChannelNav.style.display = 'none';
+
+      const otherPeerKeys = await this.state.otherPeer.then()
+      const otherPeerEpub = otherPeerKeys.epub;
+      const addMessageToChat = this.addMessageToChat;
+
+      let loadedMsgs = {};
+
+      async function loadChatOfNode(node){
+        node.on((nodeData) => {
+          for(let time in nodeData){
+            if(!loadedMsgs[time]){
+              node.get(time).on(async function(msgData){
+                const sec = await Gun.SEA.secret(otherPeerEpub, gun.user()._.sea);
+                let decMsg;
+                if(typeof msgData.msg == 'object'){
+                  decMsg = await Gun.SEA.decrypt(msgData.msg, sec);
+                  msgData.msg = decMsg;
+                }else{
+                  decMsg = msgData.msg;
+                }
+                loadedMsgs[time] = msgData;
+                if(msgData && msgData.msg && msgData.user){
+                  addMessageToChat(msgData);
+                }
+              });
+            }
+          }
         });
 
-        //EMPTY THE MESSAGE LIST
-        let msgList = document.getElementById('msgContainerList');
-        while (msgList.firstChild) {
-          msgList.firstChild.remove();
+      }
+
+      loadChatOfNode(this.state.userGunChat);
+      loadChatOfNode(this.state.otherPeerChat);
+
+      if(cb && typeof cb == 'function'){
+        cb()
+      };
+
+    }
+
+  }
+
+  async sendMessageToPrivatePeer(msg, channel=null){
+    let gun = this.props.gun;
+    if(msg.length > 0){
+      let msgInput = document.getElementById('msgInput');
+      msgInput.value = "";
+      msgInput.blur();
+      let time = Date.now();
+      //ENCRYPT OUR MESSAGE
+      const otherPeerKeys = await this.state.otherPeer.then()
+      const otherPeerEpub = otherPeerKeys.epub;
+      const sec = await Gun.SEA.secret(otherPeerEpub, gun.user()._.sea);
+      let encMsg = await Gun.SEA.encrypt(msg, sec);
+      this.state.userGunChat.get(time).put({
+        msg : encMsg,
+        user : gun.user().is.alias,
+        time : time,
+        channel : channel
+      })
+    }
+  }
+
+  async connectToChannel(channel){
+    let gun = this.props.gun;
+    let channelKey = channel.key;
+
+    this.setState({
+      userGunChat : gun.user().get('pchannel').get(channelKey).get('chat'),
+      privateChat : false,
+      channelChat : true,
+      currentChannel : channel
+    })
+
+    //EMPTY THE MESSAGE LIST
+    let msgList = document.getElementById('msgContainerList');
+    while (msgList.firstChild) {
+      msgList.firstChild.remove();
+    }
+    let loadedMsgs = {};
+
+    //UPDATE CHAT NAVBAR
+    let privateChannelNav = document.getElementById('privateChannelNav');
+    privateChannelNav.style.display = 'flex';
+    let privateChannelNavText = document.getElementById('channelNavText');
+    privateChannelNavText.textContent = "Talking with " + channel.name;
+    let privateMsgNav = document.getElementById('privateMsgNav');
+    privateMsgNav.style.display = 'none';
+
+    const addMessageToChat = this.addMessageToChat;
+
+    async function loadChatOfNode(node){
+      node.on((nodeData) => {
+        for(let time in nodeData){
+          if(!loadedMsgs[time]){
+            node.get(time).on(async function(msgData){
+              // console.log(msgData.msg)
+              const sec = await Gun.SEA.secret(channelKey, gun.user()._.sea);
+              let decMsg;
+              if(typeof msgData.msg == 'object'){
+                decMsg = await Gun.SEA.decrypt(msgData.msg, sec);
+                msgData.msg = decMsg;
+              }else{
+                decMsg = msgData.msg;
+              }
+              loadedMsgs[time] = msgData;
+              if(msgData && msgData.msg && msgData.user){
+                addMessageToChat(msgData);
+              }
+            });
+          }
         }
-        let loadedMsgs = {};
+      });
+    }
 
-
-        this.state.otherPeer.then((u) => {
-          //LOAD OUR CHAT DATA
-          this.state.userGunChat.on((d) => {
-            for(let time in d){
-              if(!loadedMsgs[time]){
-                this.state.userGunChat.get(time).on((msg) => {
-                  Gun.SEA.secret(u.epub, gun.user().pair()).then((sec) => {
-                    Gun.SEA.decrypt(msg.msg, sec).then((decMsg) => {
-                      msg.msg = decMsg;
-                      loadedMsgs[time] = msg;
-                      if(msg && msg.msg && msg.user){
-                        this.addMessageToChat(msg);
-                      }
-                    })
-                  })
-                })
-              }
-            }
-          })
-
-          //LOAD OTHER USER's CHAT DATA
-          this.state.otherPeerChat.on((d) => {
-            for(let time in d){
-              if(!loadedMsgs[time]){
-                this.state.otherPeerChat.get(time).on((msg) => {
-                  Gun.SEA.secret(u.epub, gun.user().pair()).then((sec) => {
-                    Gun.SEA.decrypt(msg.msg, sec).then((decMsg) => {
-                      msg.msg = decMsg;
-                      loadedMsgs[time] = msg;
-                      if(msg && msg.msg && msg.user){
-                        this.addMessageToChat(msg);
-                      }
-                    })
-                  })
-                })
-              }
-            }
-          })
-        })
+    //GO through each PEER in this channel
+    let loadedPeers = {};
+    gun.user().get('pchannel').get(channelKey).get('peers').on((peers) => {
+      if(peers){
+        for(let pubKey in peers){
+          if(!loadedPeers[pubKey]){
+            loadedPeers[pubKey] = peers[pubKey];
+            let peerChannelChatNode = gun.user(pubKey).get('pchannel').get(channelKey).get('chat');
+            loadChatOfNode(peerChannelChatNode);
+          }
+        }
       }
     })
+
+  }
+
+  async sendMessageToChannel(msg, channelKey){
+    let gun = this.props.gun;
+    if(msg.length > 0){
+      let msgInput = document.getElementById('msgInput');
+      msgInput.value = "";
+      msgInput.blur();
+      let time = Date.now();
+      //ENCRYPT OUR MESSAGE WITH CHANNEL KEY
+      const sec = await Gun.SEA.secret(channelKey, gun.user()._.sea);
+      const encMsg = await Gun.SEA.encrypt(msg, sec);
+      this.state.userGunChat.get(time).put({
+        msg : encMsg,
+        user : gun.user().is.alias,
+        time : time,
+      })
+    }
   }
 
   addMessageToChat(msg){
@@ -100,6 +224,11 @@ class GunChat extends Component {
     newMsg.appendChild(newMsgText);
     newMsg.setAttribute('time', msg.time);
 
+    if(msg.channel){
+      newMsg.className = 'msg channelInvite';
+      newMsgText.className = 'channelInviteText';
+    }
+
     let msgList = document.getElementById('msgContainerList');
     msgList.appendChild(newMsg);
 
@@ -114,40 +243,54 @@ class GunChat extends Component {
     msgList.scrollTo(0, msgList.scrollHeight);
   }
 
-  sendMessage(msg){
+  invitePeerToChannel(alias){
+    //Clear invite form
     let gun = this.props.gun;
-    if(msg.length > 0){
-      let msgInput = document.getElementById('msgInput');
-      msgInput.value = "";
-      msgInput.blur();
-      let time = Date.now();
-      //ENCRYPT OUR MESSAGE
-      this.state.otherPeer.then((u) => {
-        Gun.SEA.secret(u.epub, gun.user().pair()).then((sec) => {
-          Gun.SEA.encrypt(msg, sec).then((encMsg) => {
-            this.state.userGunChat.get(time).put({
-              msg : encMsg,
-              user : gun.user().is.alias,
-              time : time
-            })
-          })
-        })
-      })
-    }
+    let currentChannel = this.state.currentChannel
+    document.getElementById('channelInviteInput').value = "";
+    this.connectToPrivatePeer(alias, () => {
+      let newMsg = "You are invited to join " + currentChannel.name;
+      this.sendMessageToPrivatePeer(newMsg, currentChannel)
+    });
   }
 
   handleMsgSubmitClick(e){
     let msg = document.getElementById('msgInput').value;
-    this.sendMessage(msg);
+    if(this.state.privateChat){
+      this.sendMessageToPrivatePeer(msg);
+    }
+    if(this.state.channelChat){
+      this.sendMessageToChannel(msg, this.state.currentChannel)
+    }
+  }
+
+  handleInviteClick(){
+    let alias = document.getElementById('channelInviteInput').value;
+    this.invitePeerToChannel(alias)
   }
 
   render() {
     return (
       <div id="gunChat">
 
-        <GunContacts gun={this.props.gun} connectToChat={this.connectToChat}/>
+        <GunContacts
+         gun={this.props.gun}
+         connectToPrivatePeer={this.connectToPrivatePeer}
+         sendMessageToPrivatePeer={this.sendMessageToPrivatePeer}
+         connectToChannel={this.connectToChannel}
+        />
 
         <div className="chatMessagingContainer">
+
+          <div id="privateChannelNav">
+            <div id="channelNavText"></div>
+            <form id="channelInviteForm">
+              <input id="channelInviteInput" placeholder="Invite a Domain"></input>
+              <div id="channelInviteSubmit" onClick={this.handleInviteClick}>Invite</div>
+            </form>
+          </div>
+          <div id="privateMsgNav"></div>
+
           <div id="msgContainerList"></div>
 
           <div className="msgInputContainer">

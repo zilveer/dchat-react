@@ -1,4 +1,5 @@
 import React, { Component } from 'react';
+import ReactDOM from "react-dom";
 // import logo from './logo.svg';
 import './App.css';
 import Gun from 'gun/gun';
@@ -22,8 +23,10 @@ class App extends Component {
   componentDidMount(){
     gun.on('auth', () => {
       document.getElementById('gunAuth').style.display = 'none';
-      document.getElementById('gunChat').style.display = 'flex';
+      // document.getElementById('gunChat').style.display = 'flex';
       //document.getElementById('gunPrivateChat').style.display = 'flex';
+      ReactDOM.render(<GunChat gun={gun}/>, document.getElementById('chatComponent'));
+
     })
     gun.user().recall({sessionStorage : true});
   }
@@ -35,7 +38,8 @@ class App extends Component {
         <h1 className="gunChatHeader">Unstoppable Chat!</h1>
 
         <GunAuth gun={gun} />
-        <GunChat gun={gun}/>
+        <div id="chatComponent">
+        </div>
 
       </div>
     );
