@@ -15,7 +15,7 @@ Current Users
 }
 ```
 
-Day 2-? - Private Groups/Channels
+Day 2-5 - Private Groups/Channels
 
 1. Section for one to one private chat.
 2. Section above that for making group chats.
@@ -23,3 +23,12 @@ Day 2-? - Private Groups/Channels
 4. Second add ability to leave group.
 5. Add encryption via SEA.js (Also ask mark?).
 6. Add ability to join group. (Everybody can add another person to the group).
+
+Day 6- Touch ups
+
+1. Add Channel "user joined/left" message.
+2. Contact Improvements...
+   - Notifications, Number of messages/Last message w/ellipsis.
+   - Separate out invites.
+   - Channel metadata - Number users, User list, Id of channel (faded grey text).
+3. Contact invite.
