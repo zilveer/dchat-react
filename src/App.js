@@ -29,6 +29,15 @@ class App extends Component {
 
     })
     gun.user().recall({sessionStorage : true});
+    let appContainer = document.querySelector('.gunChatApp');
+    appContainer.addEventListener('click', (e) => {
+      if(e.target.className != 'leaveChannelBtn' &&
+         e.target.className != 'channelMenu'
+      ){
+        let leaveBtn = document.querySelector('.leaveChannelBtn');
+        if(leaveBtn){leaveBtn.remove()}
+      }
+    })
   }
 
   render() {

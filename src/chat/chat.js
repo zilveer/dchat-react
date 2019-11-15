@@ -157,22 +157,24 @@ class GunChat extends Component {
     let thisComp = this;
     async function loadChatOfNode(node){
       node.on((nodeData) => {
-        for(let time in nodeData){
-          if(!loadedMsgs[time]){
-            node.get(time).on(async function(msgData){
-              console.log(msgData.msg)
-              let decMsg;
-              if(typeof msgData.msg == 'object'){
-                decMsg = await Gun.SEA.decrypt(msgData.msg, channelSec);
-                msgData.msg = decMsg;
-              }else{
-                decMsg = msgData.msg;
-              }
-              loadedMsgs[time] = msgData;
-              if(msgData && msgData.msg && msgData.user && thisComp.state.currentChannel == channel){
-                addMessageToChat(msgData);
-              }
-            });
+        if(nodeData){
+          for(let time in nodeData){
+            if(!loadedMsgs[time]){
+              node.get(time).on(async function(msgData){
+                console.log(msgData.msg)
+                let decMsg;
+                if(typeof msgData.msg == 'object'){
+                  decMsg = await Gun.SEA.decrypt(msgData.msg, channelSec);
+                  msgData.msg = decMsg;
+                }else{
+                  decMsg = msgData.msg;
+                }
+                loadedMsgs[time] = msgData;
+                if(msgData && msgData.msg && msgData.user && thisComp.state.currentChannel == channel){
+                  addMessageToChat(msgData);
+                }
+              });
+            }
           }
         }
       });

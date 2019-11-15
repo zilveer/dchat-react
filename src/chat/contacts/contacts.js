@@ -7,6 +7,11 @@ class GunContacts extends Component {
 
   constructor(props) {
     super(props);
+    this.loadUserContacts = this.loadUserContacts.bind(this);
+    this.loadUserChannels = this.loadUserChannels.bind(this);
+    this.createContact = this.createContact.bind(this);
+    this.createChannel = this.createChannel.bind(this);
+    this.handleAddContactClick = this.handleAddContactClick.bind(this);
     this.handleContactClick = this.handleContactClick.bind(this);
     this.handleCreateChannelClick = this.handleCreateChannelClick.bind(this);
     this.state = {
@@ -17,29 +22,99 @@ class GunContacts extends Component {
 
   componentDidMount(){
     let gun = this.props.gun;
-    //LOAD ALL CHANNELS in Sidebar
+    // RESET CHANNELS
     // gun.user().get('pchannel').put(null);
+
+    //LOAD ALL CONTACTS IN SIDEBAR
+    this.loadUserContacts();
+    //LOAD ALL CHANNELS in Sidebar
+    this.loadUserChannels();
+
+  }
+
+  async loadUserContacts(){
+    let gun = this.props.gun;
+    let connectToPrivatePeer = this.props.connectToPrivatePeer;
+    gun.user().get('contacts').on((contacts) => {
+      if(contacts){
+        for(let peerPub in contacts){
+          if(!this.state.contacts[peerPub]){
+            gun.user().get('contacts').get(peerPub).get('name').once((alias) => {
+              let contactsState = this.state.contacts;
+              contactsState[peerPub] = alias;
+              this.setState({channels : contactsState})
+
+              //CREATE CONTACT ELEMENT
+              let newContactEl = document.createElement('div');
+              newContactEl.className = 'contact';
+              newContactEl.id = peerPub;
+              //CONTACT NAME
+              let newContactName = document.createElement('div');
+              newContactName.className = 'contactName';
+              newContactName.textContent = alias;
+              newContactEl.appendChild(newContactName);
+              //CONTACT MENU
+              let newContactMenu = document.createElement('div');
+              newContactMenu.className = 'contactMenu';
+              newContactMenu.innerHTML = '&#8230;';
+              newContactEl.appendChild(newContactMenu)
+
+              let contactList = document.getElementById('contactsList');
+              contactList.appendChild(newContactEl);
+
+              newContactEl.addEventListener('click', () => {
+                connectToPrivatePeer(alias);
+              })
+            })
+          }
+        }
+      }
+    })
+  }
+
+  async createContact(contactName){
+    document.getElementById('contactsInput').value = "";
+    let gun = this.props.gun;
+    const peerByAliasData = await gun.get('~@' + contactName).once();
+    if(peerByAliasData){
+      let peerPub = Object.keys(peerByAliasData)[1].substr(1);
+      gun.user().get('contacts').get(peerPub).get('name').put(contactName);
+    }
+  }
+
+  async loadUserChannels(){
+    let gun = this.props.gun;
     let connectToChannel = this.props.connectToChannel;
     gun.user().get('pchannel').on((channels) => {
       if(channels){
         for(let channelKey in channels){
-          if(!this.state.channels[channelKey]){
+          if(channels[channelKey] && !this.state.channels[channelKey]){
             gun.user().get('pchannel').get(channelKey).get('name').once((channelName) => {
               let channelsState = this.state.channels;
               channelsState[channelKey] = channelName;
               this.setState({channels : channelsState})
+
+              //CREATE CHANNEL ELEMENT
               let newChannelEl = document.createElement('div');
               newChannelEl.className = 'channel';
               newChannelEl.id = channelKey;
+              //CREATE CHANNEL NAME
               let newChannelName = document.createElement('div');
               newChannelName.className = 'channelName';
               newChannelName.textContent = channelName;
               newChannelEl.appendChild(newChannelName);
+              //CREATE CHANNEL MENU
+              let newChannelMenu = document.createElement('div');
+              newChannelMenu.className = 'channelMenu';
+              newChannelMenu.innerHTML = '&#8230;';
+              newChannelEl.appendChild(newChannelMenu)
+
               let channelList = document.getElementById('channelsList');
               channelList.appendChild(newChannelEl);
+
               newChannelEl.addEventListener('click', () => {
                 gun.user().get('pchannel').get(channelKey).get('pair').once(async function(ePair){
-                  console.log("Channel Pair", ePair);
+                  // console.log("Channel Pair", ePair);
                   if(typeof ePair == 'string'){
                     ePair = JSON.parse(ePair);
                   }
@@ -52,6 +127,25 @@ class GunContacts extends Component {
                   });
                 })
               })
+
+              //CLICKING ON CHANNEL MENU
+              newChannelMenu.addEventListener('click', () => {
+                if(newChannelMenu.querySelector('.leaveChannelBtn')){
+                  newChannelMenu.querySelector('.leaveChannelBtn').remove();
+                }else{
+                  let leaveButton = document.createElement('div');
+                  leaveButton.className = 'leaveChannelBtn';
+                  leaveButton.textContent = "Leave Channel";
+                  leaveButton.style.top = newChannelMenu.offsetTop + 5 + 'px';
+                  leaveButton.style.left = newChannelMenu.offsetLeft + 30 + 'px';
+                  newChannelMenu.appendChild(leaveButton);
+                  leaveButton.addEventListener('click', () => {
+                    gun.user().get('pchannel').get(channelKey).put(null);
+                    newChannelEl.remove();
+                  })
+                }
+              })
+
             })
           }
         }
@@ -70,7 +164,6 @@ class GunContacts extends Component {
     let encPair = await Gun.SEA.encrypt(JSON.stringify(channelPair), sec);
     gun.user().get('pchannel').get(channelKey).get('pair').put(encPair);
     gun.user().get('pchannel').get(channelKey).get('name').put(channelName);
-    gun.user().get('pchannel').get(channelKey).get('owner').put(gun.user().is.pub);
     gun.user().get('pchannel').get(channelKey).get('peers').get(gun.user().is.pub).put(gun.user().is.alias);
   }
 
@@ -79,10 +172,11 @@ class GunContacts extends Component {
     this.props.connectToPrivatePeer(username);
   }
 
-  // handleChannelClick(e){
-  //   let channelKey = e.target.id;
-  //   this.props.connectToChannel(channelKey);
-  // }
+  handleAddContactClick(){
+    let contactsInput = document.getElementById('contactsInput');
+    let newContactName = contactsInput.value;
+    this.createContact(newContactName);
+  }
 
   handleCreateChannelClick(){
     let channelsInput = document.getElementById('channelsInput')
@@ -108,19 +202,10 @@ class GunContacts extends Component {
         <div className="gunChatContacts">
           <div className="contactsHeader">Contacts</div>
           <div className="contactsInputContainer">
-            <input className="contactsInput" placeholder="Add a Domain to Chat"></input>
-            <div className="contactsInputSubmit">Add</div>
+            <input id="contactsInput" placeholder="Add a Domain to Chat"></input>
+            <div id="contactsInputSubmit" onClick={this.handleAddContactClick}>Add</div>
           </div>
-          <div className="contactsList">
-            <div className="contact" onClick={this.handleContactClick}>
-              <div className="contactName">jamie.crypto</div>
-            </div>
-            <div className="contact" onClick={this.handleContactClick}>
-              <div className="contactName">braden.crypto</div>
-            </div>
-            <div className="contact" onClick={this.handleContactClick}>
-              <div className="contactName">ryan.crypto</div>
-            </div>
+          <div id="contactsList">
           </div>
         </div>
       </div>
