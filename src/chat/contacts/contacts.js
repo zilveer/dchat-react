@@ -85,67 +85,80 @@ class GunContacts extends Component {
   async loadUserChannels(){
     let gun = this.props.gun;
     let connectToChannel = this.props.connectToChannel;
+    let sendMessageToChannel = this.props.sendMessageToChannel;
     gun.user().get('pchannel').on((channels) => {
       if(channels){
         for(let channelKey in channels){
           if(channels[channelKey] && !this.state.channels[channelKey]){
             gun.user().get('pchannel').get(channelKey).get('name').once((channelName) => {
-              let channelsState = this.state.channels;
-              channelsState[channelKey] = channelName;
-              this.setState({channels : channelsState})
+              if(channelName){
+                let channelsState = this.state.channels;
+                channelsState[channelKey] = channelName;
+                this.setState({channels : channelsState})
 
-              //CREATE CHANNEL ELEMENT
-              let newChannelEl = document.createElement('div');
-              newChannelEl.className = 'channel';
-              newChannelEl.id = channelKey;
-              //CREATE CHANNEL NAME
-              let newChannelName = document.createElement('div');
-              newChannelName.className = 'channelName';
-              newChannelName.textContent = channelName;
-              newChannelEl.appendChild(newChannelName);
-              //CREATE CHANNEL MENU
-              let newChannelMenu = document.createElement('div');
-              newChannelMenu.className = 'channelMenu';
-              newChannelMenu.innerHTML = '&#8230;';
-              newChannelEl.appendChild(newChannelMenu)
+                //CREATE CHANNEL ELEMENT
+                let newChannelEl = document.createElement('div');
+                newChannelEl.className = 'channel';
+                newChannelEl.id = channelKey;
+                //CREATE CHANNEL NAME
+                let newChannelName = document.createElement('div');
+                newChannelName.className = 'channelName';
+                newChannelName.textContent = channelName;
+                newChannelEl.appendChild(newChannelName);
+                //CREATE CHANNEL MENU
+                let newChannelMenu = document.createElement('div');
+                newChannelMenu.className = 'channelMenu';
+                newChannelMenu.innerHTML = '&#8230;';
+                newChannelEl.appendChild(newChannelMenu)
 
-              let channelList = document.getElementById('channelsList');
-              channelList.appendChild(newChannelEl);
+                let channelList = document.getElementById('channelsList');
+                channelList.appendChild(newChannelEl);
 
-              newChannelEl.addEventListener('click', () => {
-                gun.user().get('pchannel').get(channelKey).get('pair').once(async function(ePair){
-                  // console.log("Channel Pair", ePair);
-                  if(typeof ePair == 'string'){
-                    ePair = JSON.parse(ePair);
-                  }
-                  let sec = await Gun.SEA.secret(channelKey, gun.user()._.sea);
-                  let pair = await Gun.SEA.decrypt(ePair, sec);
-                  connectToChannel({
-                    key : channelKey,
-                    name : channelName,
-                    pair : pair,
-                  });
-                })
-              })
-
-              //CLICKING ON CHANNEL MENU
-              newChannelMenu.addEventListener('click', () => {
-                if(newChannelMenu.querySelector('.leaveChannelBtn')){
-                  newChannelMenu.querySelector('.leaveChannelBtn').remove();
-                }else{
-                  let leaveButton = document.createElement('div');
-                  leaveButton.className = 'leaveChannelBtn';
-                  leaveButton.textContent = "Leave Channel";
-                  leaveButton.style.top = newChannelMenu.offsetTop + 5 + 'px';
-                  leaveButton.style.left = newChannelMenu.offsetLeft + 30 + 'px';
-                  newChannelMenu.appendChild(leaveButton);
-                  leaveButton.addEventListener('click', () => {
-                    gun.user().get('pchannel').get(channelKey).put(null);
-                    newChannelEl.remove();
+                newChannelEl.addEventListener('click', () => {
+                  gun.user().get('pchannel').get(channelKey).get('pair').once(async function(ePair){
+                    // console.log("Channel Pair", ePair);
+                    if(typeof ePair == 'string'){
+                      ePair = JSON.parse(ePair);
+                    }
+                    let sec = await Gun.SEA.secret(channelKey, gun.user()._.sea);
+                    let pair = await Gun.SEA.decrypt(ePair, sec);
+                    connectToChannel({
+                      key : channelKey,
+                      name : channelName,
+                      pair : pair,
+                    });
                   })
-                }
-              })
-
+                })
+                //CLICKING ON CHANNEL MENU
+                newChannelMenu.addEventListener('click', () => {
+                  if(newChannelMenu.querySelector('.leaveChannelBtn')){
+                    newChannelMenu.querySelector('.leaveChannelBtn').remove();
+                  }else{
+                    let leaveButton = document.createElement('div');
+                    leaveButton.className = 'leaveChannelBtn';
+                    leaveButton.textContent = "Leave Channel";
+                    leaveButton.style.top = newChannelMenu.offsetTop + 5 + 'px';
+                    leaveButton.style.left = newChannelMenu.offsetLeft + 30 + 'px';
+                    newChannelMenu.appendChild(leaveButton);
+                    //LEAVING A CHANNEL
+                    leaveButton.addEventListener('click', () => {
+                      gun.user().get('pchannel').get(channelKey).get('pair').once(async function(ePair){
+                        if(typeof ePair == 'string'){
+                          ePair = JSON.parse(ePair);
+                        }
+                        let sec = await Gun.SEA.secret(channelKey, gun.user()._.sea);
+                        let pair = await Gun.SEA.decrypt(ePair, sec);
+                        let channel = {key : channelKey, name : channelName, pair : pair};
+                        connectToChannel(channel);
+                        let leaveMsg = gun.user().is.alias + " has left the chat.";
+                        sendMessageToChannel(leaveMsg, channel, {pubKey : gun.user().is.pub, alias : gun.user().is.alias, action : "leave"});
+                        gun.user().get('pchannel').get(channelKey).put(null);
+                        newChannelEl.remove();
+                      })
+                    })
+                  }
+                })
+              }
             })
           }
         }
