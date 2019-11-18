@@ -43,16 +43,24 @@ class GunContacts extends Component {
               let contactsState = this.state.contacts;
               contactsState[peerPub] = alias;
               this.setState({channels : contactsState})
-
               //CREATE CONTACT ELEMENT
               let newContactEl = document.createElement('div');
               newContactEl.className = 'contact';
               newContactEl.id = peerPub;
+              //CONTACT INFO SECTION (NAME AND NOTIFCATIONS)
+              let newContactInfo = document.createElement('div');
+              newContactInfo.className = 'contactInfo';
+              newContactEl.appendChild(newContactInfo);
               //CONTACT NAME
               let newContactName = document.createElement('div');
               newContactName.className = 'contactName';
               newContactName.textContent = alias;
-              newContactEl.appendChild(newContactName);
+              newContactInfo.appendChild(newContactName);
+              //CONTACT Notifications
+              let newContactNotif = document.createElement('div');
+              newContactNotif.className = 'contactNotif';
+              // newContactNotif.textContent = 0;
+              newContactInfo.appendChild(newContactNotif);
               //CONTACT MENU
               let newContactMenu = document.createElement('div');
               newContactMenu.className = 'contactMenu';
@@ -65,6 +73,25 @@ class GunContacts extends Component {
               newContactEl.addEventListener('click', () => {
                 connectToPrivatePeer(alias);
               })
+
+              //LOAD NOTIFCATIONS (UNREAD MESSAGE COUNT)
+              gun.get('pchat').get(gun.user().is.alias).get(alias).on((msgs) => {
+                if(msgs){
+                  let msgCount = 0;
+                  for(let time in msgs){
+                    if(time != '_' && msgs[time]){
+                      msgCount += 1;
+                    }
+                  }
+                  if(msgCount > 0){
+                    newContactNotif.style.display = 'block';
+                    newContactNotif.textContent = msgCount
+                  }else{
+                    newContactNotif.style.display = 'none';
+                  }
+                }
+              })
+
             })
           }
         }
@@ -95,16 +122,24 @@ class GunContacts extends Component {
                 let channelsState = this.state.channels;
                 channelsState[channelKey] = channelName;
                 this.setState({channels : channelsState})
-
                 //CREATE CHANNEL ELEMENT
                 let newChannelEl = document.createElement('div');
                 newChannelEl.className = 'channel';
                 newChannelEl.id = channelKey;
+                //CHANNEL INFO SECTION (NAME AND NOTIFCATIONS)
+                let newChannelInfo = document.createElement('div');
+                newChannelInfo.className = 'channelInfo';
+                newChannelEl.appendChild(newChannelInfo);
                 //CREATE CHANNEL NAME
                 let newChannelName = document.createElement('div');
                 newChannelName.className = 'channelName';
                 newChannelName.textContent = channelName;
-                newChannelEl.appendChild(newChannelName);
+                newChannelInfo.appendChild(newChannelName);
+                //CHANNEL Notifications
+                let newChannelNotif = document.createElement('div');
+                newChannelNotif.className = 'channelNotif';
+                // newChannelNotif.textContent = 0;
+                newChannelInfo.appendChild(newChannelNotif);
                 //CREATE CHANNEL MENU
                 let newChannelMenu = document.createElement('div');
                 newChannelMenu.className = 'channelMenu';
@@ -122,10 +157,12 @@ class GunContacts extends Component {
                     }
                     let sec = await Gun.SEA.secret(channelKey, gun.user()._.sea);
                     let pair = await Gun.SEA.decrypt(ePair, sec);
+                    let peers = await gun.user().get('pchannel').get(channelKey).get('peers').once();
                     connectToChannel({
                       key : channelKey,
                       name : channelName,
                       pair : pair,
+                      peers : peers
                     });
                   })
                 })
@@ -156,6 +193,24 @@ class GunContacts extends Component {
                         newChannelEl.remove();
                       })
                     })
+                  }
+                })
+
+                //LOAD NOTIFCATIONS (UNREAD MESSAGE COUNT)
+                gun.get('pchannel').get(channelKey).get(gun.user().is.alias).on((msgs) => {
+                  if(msgs){
+                    let msgCount = 0;
+                    for(let time in msgs){
+                      if(time != '_' && msgs[time]){
+                        msgCount += 1;
+                      }
+                    }
+                    if(msgCount > 0){
+                      newChannelNotif.style.display = 'block';
+                      newChannelNotif.textContent = msgCount
+                    }else{
+                      newChannelNotif.style.display = 'none';
+                    }
                   }
                 })
               }

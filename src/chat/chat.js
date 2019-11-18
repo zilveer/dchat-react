@@ -83,6 +83,8 @@ class GunChat extends Component {
                 if(msgData && msgData.msg && msgData.user){
                   if(thisComp.state.otherPeer == gun.user(peerPubKey)){
                     addMessageToChat(msgData);
+                    //REMOVE MSG FROM NOTIFICATIONS NUMBER
+                    gun.get('pchat').get(gun.user().is.alias).get(msgData.user).get(time).put(null);
                   }
                 }
               });
@@ -121,10 +123,17 @@ class GunChat extends Component {
         time : time,
         channel : JSON.stringify(channel)
       })
+      //PUBLIC FOR NOTIFICATIONS
+      gun.get('pchat').get(otherPeerKeys.alias).get(gun.user().is.alias).get(time).put({
+        msg : encMsg,
+        user : gun.user().is.alias,
+        time : time,
+      })
     }
   }
 
   async connectToChannel(channel){
+
     let gun = this.props.gun;
     let channelKey = channel.key;
 
@@ -132,7 +141,8 @@ class GunChat extends Component {
       userGunChat : gun.user().get('pchannel').get(channelKey).get('chat'),
       privateChat : false,
       channelChat : true,
-      currentChannel : channel
+      currentChannel : channel,
+      otherPeer : null
     })
 
     //EMPTY THE MESSAGE LIST
@@ -161,7 +171,7 @@ class GunChat extends Component {
           for(let time in nodeData){
             if(!loadedMsgs[time]){
               node.get(time).on(async function(msgData){
-                console.log(msgData.msg)
+                // console.log(msgData.msg) // <-- Encrypted msg
                 let decMsg;
                 if(typeof msgData.msg == 'object'){
                   decMsg = await Gun.SEA.decrypt(msgData.msg, channelSec);
@@ -172,6 +182,8 @@ class GunChat extends Component {
                 loadedMsgs[time] = msgData;
                 if(msgData && msgData.msg && msgData.user && thisComp.state.currentChannel == channel){
                   addMessageToChat(msgData);
+                  //REMOVE MSG FROM NOTIFICATIONS NUMBER
+                  gun.get('pchannel').get(channel.key).get(gun.user().is.alias).get(time).put(null);
                 }
               });
             }
@@ -182,17 +194,15 @@ class GunChat extends Component {
 
     //GO through each PEER in this channel
     let loadedPeers = {};
-    gun.user().get('pchannel').get(channelKey).get('peers').on((peers) => {
-      if(peers){
-        for(let pubKey in peers){
-          if(!loadedPeers[pubKey]){
-            loadedPeers[pubKey] = peers[pubKey];
-            let peerChannelChatNode = gun.user(pubKey).get('pchannel').get(channelKey).get('chat');
-            loadChatOfNode(peerChannelChatNode);
-          }
+    if(channel.peers){
+      for(let pubKey in channel.peers){
+        if(!loadedPeers[pubKey]){
+          loadedPeers[pubKey] = channel.peers[pubKey];
+          let peerChannelChatNode = gun.user(pubKey).get('pchannel').get(channelKey).get('chat');
+          loadChatOfNode(peerChannelChatNode);
         }
       }
-    })
+    }
 
   }
 
@@ -218,6 +228,20 @@ class GunChat extends Component {
         time : time,
         peerInfo : peerInfo
       })
+
+      //PUBLIC FOR NOTIFICATIONS
+      if(channel.peers){
+        for(let pubKey in channel.peers){
+          if(pubKey != '_' && channel.peers[pubKey] && channel.peers[pubKey] != gun.user().is.alias){
+            gun.get('pchannel').get(channel.key).get(channel.peers[pubKey]).get(time).put({
+              msg : encMsg,
+              user : gun.user().is.alias,
+              time : time,
+            })
+          }
+        }
+      }
+
     }
   }
 

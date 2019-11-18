@@ -89,6 +89,21 @@
   border-top: 2px solid #3d8eec;
 }
 
+.channelInfo{
+  display: flex;
+}
+
+.channelNotif{
+  margin-left: 5px;
+  font-weight: bold;
+  color: white;
+  display: none;
+  border-radius: 100%;
+  background : #ff8d5a;
+  padding : 4px 8px;
+  font-size: 12px;
+}
+
 .channelMenu{
   font-weight: bold;
   margin-right: 15px;
@@ -192,6 +207,21 @@
 .contact:first-child{
   margin-top: 3px;
   border-top: 2px solid #3d8eec;
+}
+
+.contactInfo{
+  display: flex;
+}
+
+.contactNotif{
+  margin-left: 5px;
+  font-weight: bold;
+  color: white;
+  display: none;
+  border-radius: 100%;
+  background : #ff8d5a;
+  padding : 4px 8px;
+  font-size: 12px;
 }
 
 .contactMenu{
