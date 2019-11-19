@@ -59,12 +59,15 @@ class GunContacts extends Component {
               //CONTACT Notifications
               let newContactNotif = document.createElement('div');
               newContactNotif.className = 'contactNotif';
-              // newContactNotif.textContent = 0;
               newContactInfo.appendChild(newContactNotif);
+              //CONTACT LATEST MESSAGE
+              let newContactLatest = document.createElement('div');
+              newContactLatest.className = 'contactLatest';
+              newContactInfo.appendChild(newContactLatest);
               //CONTACT MENU
               let newContactMenu = document.createElement('div');
               newContactMenu.className = 'contactMenu';
-              newContactMenu.innerHTML = '&#8230;';
+              newContactMenu.innerHTML = '&#8942;';
               newContactEl.appendChild(newContactMenu)
 
               let contactList = document.getElementById('contactsList');
@@ -75,7 +78,7 @@ class GunContacts extends Component {
               })
 
               //LOAD NOTIFCATIONS (UNREAD MESSAGE COUNT)
-              gun.get('pchat').get(gun.user().is.alias).get(alias).on((msgs) => {
+              gun.get('pchat').get(gun.user().is.alias).get(alias).get('new').on((msgs) => {
                 if(msgs){
                   let msgCount = 0;
                   for(let time in msgs){
@@ -89,6 +92,24 @@ class GunContacts extends Component {
                   }else{
                     newContactNotif.style.display = 'none';
                   }
+                }
+              })
+
+              //LOAD LATEST MESSAGE
+              let latestTime = null;
+              gun.get('pchat').get(gun.user().is.alias).get(alias).get('latest').on(async function(msg){
+                if(msg && latestTime != msg.time){
+                  let msgText = msg.msg;
+                  if(typeof msgText == 'string'){
+                    msgText = JSON.parse(msgText);
+                  }
+                  const peerByAliasData = await gun.get('~@' + alias).once();
+                  const peerPubKey = Object.keys(peerByAliasData)[1].substr(1);
+                  const peerKeys = await gun.user(peerPubKey).then()
+                  const peerEpub = peerKeys.epub;
+                  const sec = await Gun.SEA.secret(peerEpub, gun.user()._.sea)
+                  newContactLatest.textContent = await Gun.SEA.decrypt(msgText, sec);
+                  latestTime = msg.time;
                 }
               })
 
@@ -122,41 +143,51 @@ class GunContacts extends Component {
                 let channelsState = this.state.channels;
                 channelsState[channelKey] = channelName;
                 this.setState({channels : channelsState})
-                //CREATE CHANNEL ELEMENT
-                let newChannelEl = document.createElement('div');
-                newChannelEl.className = 'channel';
-                newChannelEl.id = channelKey;
-                //CHANNEL INFO SECTION (NAME AND NOTIFCATIONS)
-                let newChannelInfo = document.createElement('div');
-                newChannelInfo.className = 'channelInfo';
-                newChannelEl.appendChild(newChannelInfo);
-                //CREATE CHANNEL NAME
-                let newChannelName = document.createElement('div');
-                newChannelName.className = 'channelName';
-                newChannelName.textContent = channelName;
-                newChannelInfo.appendChild(newChannelName);
-                //CHANNEL Notifications
-                let newChannelNotif = document.createElement('div');
-                newChannelNotif.className = 'channelNotif';
-                // newChannelNotif.textContent = 0;
-                newChannelInfo.appendChild(newChannelNotif);
-                //CREATE CHANNEL MENU
-                let newChannelMenu = document.createElement('div');
-                newChannelMenu.className = 'channelMenu';
-                newChannelMenu.innerHTML = '&#8230;';
-                newChannelEl.appendChild(newChannelMenu)
+                
+                gun.user().get('pchannel').get(channelKey).get('pair').once(async function(ePair){
+                  // console.log("Channel Pair", ePair);
+                  if(typeof ePair == 'string'){
+                    ePair = JSON.parse(ePair);
+                  }
+                  let sec = await Gun.SEA.secret(channelKey, gun.user()._.sea);
+                  let pair = await Gun.SEA.decrypt(ePair, sec);
 
-                let channelList = document.getElementById('channelsList');
-                channelList.appendChild(newChannelEl);
+                  //CREATE CHANNEL ELEMENT
+                  let newChannelEl = document.createElement('div');
+                  newChannelEl.className = 'channel';
+                  newChannelEl.id = channelKey;
+                  //CHANNEL INFO SECTION (NAME AND NOTIFCATIONS)
+                  let newChannelInfo = document.createElement('div');
+                  newChannelInfo.className = 'channelInfo';
+                  newChannelEl.appendChild(newChannelInfo);
+                  //CREATE CHANNEL NAME
+                  let newChannelName = document.createElement('div');
+                  newChannelName.className = 'channelName';
+                  newChannelName.textContent = channelName;
+                  newChannelInfo.appendChild(newChannelName);
+                  //CREATE CHANNEL KEY
+                  let newChannelKey = document.createElement('div');
+                  newChannelKey.className = 'channelKey';
+                  newChannelKey.textContent = '#' + channelKey.substr(0,5);
+                  newChannelInfo.appendChild(newChannelKey);
+                  //CHANNEL Notifications
+                  let newChannelNotif = document.createElement('div');
+                  newChannelNotif.className = 'channelNotif';
+                  newChannelInfo.appendChild(newChannelNotif);
+                  //CHANNEL LATEST MESSAGE
+                  let newChannelLatest = document.createElement('div');
+                  newChannelLatest.className = 'channelLatest';
+                  newChannelInfo.append(newChannelLatest);
+                  //CREATE CHANNEL MENU
+                  let newChannelMenu = document.createElement('div');
+                  newChannelMenu.className = 'channelMenu';
+                  newChannelMenu.innerHTML = '&#8942;';
+                  newChannelEl.appendChild(newChannelMenu)
 
-                newChannelEl.addEventListener('click', () => {
-                  gun.user().get('pchannel').get(channelKey).get('pair').once(async function(ePair){
-                    // console.log("Channel Pair", ePair);
-                    if(typeof ePair == 'string'){
-                      ePair = JSON.parse(ePair);
-                    }
-                    let sec = await Gun.SEA.secret(channelKey, gun.user()._.sea);
-                    let pair = await Gun.SEA.decrypt(ePair, sec);
+                  let channelList = document.getElementById('channelsList');
+                  channelList.appendChild(newChannelEl);
+
+                  newChannelEl.addEventListener('click', async function(){
                     let peers = await gun.user().get('pchannel').get(channelKey).get('peers').once();
                     connectToChannel({
                       key : channelKey,
@@ -165,26 +196,19 @@ class GunContacts extends Component {
                       peers : peers
                     });
                   })
-                })
-                //CLICKING ON CHANNEL MENU
-                newChannelMenu.addEventListener('click', () => {
-                  if(newChannelMenu.querySelector('.leaveChannelBtn')){
-                    newChannelMenu.querySelector('.leaveChannelBtn').remove();
-                  }else{
-                    let leaveButton = document.createElement('div');
-                    leaveButton.className = 'leaveChannelBtn';
-                    leaveButton.textContent = "Leave Channel";
-                    leaveButton.style.top = newChannelMenu.offsetTop + 5 + 'px';
-                    leaveButton.style.left = newChannelMenu.offsetLeft + 30 + 'px';
-                    newChannelMenu.appendChild(leaveButton);
-                    //LEAVING A CHANNEL
-                    leaveButton.addEventListener('click', () => {
-                      gun.user().get('pchannel').get(channelKey).get('pair').once(async function(ePair){
-                        if(typeof ePair == 'string'){
-                          ePair = JSON.parse(ePair);
-                        }
-                        let sec = await Gun.SEA.secret(channelKey, gun.user()._.sea);
-                        let pair = await Gun.SEA.decrypt(ePair, sec);
+                  //CLICKING ON CHANNEL MENU
+                  newChannelMenu.addEventListener('click', () => {
+                    if(newChannelMenu.querySelector('.leaveChannelBtn')){
+                      newChannelMenu.querySelector('.leaveChannelBtn').remove();
+                    }else{
+                      let leaveButton = document.createElement('div');
+                      leaveButton.className = 'leaveChannelBtn';
+                      leaveButton.textContent = "Leave Channel";
+                      leaveButton.style.top = newChannelMenu.offsetTop + 5 + 'px';
+                      leaveButton.style.left = newChannelMenu.offsetLeft + 30 + 'px';
+                      newChannelMenu.appendChild(leaveButton);
+                      //LEAVING A CHANNEL
+                      leaveButton.addEventListener('click', () => {
                         let channel = {key : channelKey, name : channelName, pair : pair};
                         connectToChannel(channel);
                         let leaveMsg = gun.user().is.alias + " has left the chat.";
@@ -192,27 +216,44 @@ class GunContacts extends Component {
                         gun.user().get('pchannel').get(channelKey).put(null);
                         newChannelEl.remove();
                       })
-                    })
-                  }
-                })
+                    }
+                  })
 
-                //LOAD NOTIFCATIONS (UNREAD MESSAGE COUNT)
-                gun.get('pchannel').get(channelKey).get(gun.user().is.alias).on((msgs) => {
-                  if(msgs){
-                    let msgCount = 0;
-                    for(let time in msgs){
-                      if(time != '_' && msgs[time]){
-                        msgCount += 1;
+                  //LOAD NOTIFCATIONS (UNREAD MESSAGE COUNT)
+                  gun.get('pchannel').get(channelKey).get('peers').get(gun.user().is.alias).get('new').on((msgs) => {
+                    if(msgs){
+                      let msgCount = 0;
+                      for(let time in msgs){
+                        if(time != '_' && msgs[time]){
+                          console.log(time);
+                          msgCount += 1;
+                        }
+                      }
+                      if(msgCount > 0){
+                        newChannelNotif.style.display = 'block';
+                        newChannelNotif.textContent = msgCount
+                      }else{
+                        newChannelNotif.style.display = 'none';
                       }
                     }
-                    if(msgCount > 0){
-                      newChannelNotif.style.display = 'block';
-                      newChannelNotif.textContent = msgCount
-                    }else{
-                      newChannelNotif.style.display = 'none';
+                  })
+
+                  //LOAD LATEST MESSAGE
+                  let latestTime = null;
+                  gun.get('pchannel').get(channelKey).get('latest').on(async function(msg){
+                    if(msg && latestTime != msg.time){
+                      let msgText = msg.msg;
+                      if(typeof msgText == 'string'){
+                        msgText = JSON.parse(msgText);
+                      }
+                      const sec = await Gun.SEA.secret(channelKey, pair)
+                      newChannelLatest.textContent = await Gun.SEA.decrypt(msgText, sec);
+                      latestTime = msg.time;
                     }
-                  }
+                  })
+
                 })
+
               }
             })
           }

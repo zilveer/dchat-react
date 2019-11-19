@@ -91,6 +91,14 @@
 
 .channelInfo{
   display: flex;
+  align-items: flex-end;
+}
+
+.channelKey{
+  color : grey;
+  margin-left: 2px;
+  font-size: 12px;
+  font-weight: bold;
 }
 
 .channelNotif{
@@ -104,10 +112,25 @@
   font-size: 12px;
 }
 
+.channelLatest{
+  font-style: italic;
+  margin-left: 3px;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  color : #1a00e8;
+  padding-left: 2px;
+  overflow: hidden;
+  white-space: nowrap;
+  align-self: flex-end;
+  max-width: 130px;
+}
+
+
 .channelMenu{
   font-weight: bold;
   margin-right: 15px;
   margin-top: -8px;
+  margin-bottom : -5px;
   font-size: 22px;
   color: #4a35f0;
   cursor: pointer;
@@ -211,6 +234,7 @@
 
 .contactInfo{
   display: flex;
+  align-items: center;
 }
 
 .contactNotif{
@@ -224,10 +248,24 @@
   font-size: 12px;
 }
 
+.contactLatest{
+  font-style: italic;
+  margin-left: 3px;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  color : #1a00e8;
+  padding-left: 2px;
+  overflow: hidden;
+  white-space: nowrap;
+  align-self: flex-end;
+  max-width: 130px;
+}
+
 .contactMenu{
   font-weight: bold;
   margin-right: 15px;
   margin-top: -8px;
+  margin-bottom: -5px;
   font-size: 22px;
   color: #4a35f0;
   cursor: pointer;
