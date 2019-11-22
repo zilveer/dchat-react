@@ -1,0 +1,11 @@
+#gunChatSidebar{
+  display : flex;
+  flex-direction : column;
+  align-items : center;
+  width : 300px;
+  height : 100%;
+  pointer-events : all;
+  padding-right: 8px;
+  border-right : 3px solid #3d8eec;
+  margin-right: 8px;
+}

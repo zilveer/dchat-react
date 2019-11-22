@@ -1,13 +1,6 @@
-#gunChatSidebar{
-  display : flex;
-  flex-direction : column;
-  align-items : center;
-  width : 300px;
-  height : 100%;
-  pointer-events : all;
-  padding-right: 8px;
-  border-right : 3px solid #3d8eec;
-  margin-right: 8px;
+.gunChatChannels{
+  width : 100%;
+  margin: 10px;
 }
 
 .channelsHeader{
@@ -92,6 +85,20 @@
 .channelInfo{
   display: flex;
   align-items: flex-end;
+  width : 90%;
+}
+
+.channelUserCount{
+  margin-bottom: -3px;
+  margin-right: -3px;
+  color : #4a35f0;
+  font-weight: bold;
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+.channelName{
+  white-space: nowrap;
 }
 
 .channelKey{
@@ -150,133 +157,4 @@
 
 .leaveChannelBtn:hover{
   background : #fffef4;
-}
-
-.contactsHeader{
-  text-align : center;
-  color : #4a35f0;
-  font-size : 18px;
-  font-weight: bold;
-  margin-bottom : 5px;
-}
-
-.contactsInputContainer{
-  display : flex;
-  flex-direction : row;
-  align-items : center;
-  pointer-events : all;
-}
-
-#contactsInput{
-  font-size : 12px;
-  font-weight : bold;
-  text-align : center;
-  width : 80%;
-  padding : 5px;
-  border : 3px solid #3d8eec;
-  font-weight : bold;
-  border-top-left-radius : 8px;
-  border-bottom-left-radius : 8px;
-  border-right : 0px;
-}
-
-#contactsInputSubmit{
-  font-weight : bold;
-  display : flex;
-  justify-content : center;
-  align-items : center;
-  border : 3px solid #3d8eec;
-  background : white;
-  color : #3d8eec;
-  padding : 5px 10px;
-  cursor : pointer;
-  font-size : 12px;
-  border-top-right-radius : 8px;
-  border-bottom-right-radius : 8px;
-}
-
-#contactsInputSubmit:hover{
-  background : #c4fffb;
-}
-
-#contactsList{
-  margin-top: 5px;
-  display: flex;
-  flex-direction: column;
-  overflow-y: scroll;
-  overflow-x: hidden;
-  width: 100%;
-}
-
-.contact{
-  display: flex;
-  text-align: left;
-  /*justify-content: center;*/
-  justify-content: space-between;
-  align-items: center;
-  padding : 8px;
-  padding-left: 5px;
-  font-size: 16px;
-  border-bottom: 2px solid #3d8eec;
-  background: none;
-  width : 100%;
-  cursor: pointer;
-}
-
-.contact:hover{
-  background : #fffef4;
-}
-
-.contact:first-child{
-  margin-top: 3px;
-  border-top: 2px solid #3d8eec;
-}
-
-.contactInfo{
-  display: flex;
-  align-items: center;
-}
-
-.contactNotif{
-  margin-left: 5px;
-  font-weight: bold;
-  color: white;
-  display: none;
-  border-radius: 100%;
-  background : #ff8d5a;
-  padding : 4px 8px;
-  font-size: 12px;
-}
-
-.contactLatest{
-  font-style: italic;
-  margin-left: 3px;
-  font-size: 14px;
-  text-overflow: ellipsis;
-  color : #1a00e8;
-  padding-left: 2px;
-  overflow: hidden;
-  white-space: nowrap;
-  align-self: flex-end;
-  max-width: 130px;
-}
-
-.contactMenu{
-  font-weight: bold;
-  margin-right: 15px;
-  margin-top: -8px;
-  margin-bottom: -5px;
-  font-size: 22px;
-  color: #4a35f0;
-  cursor: pointer;
-}
-
-.gunChatChannels{
-  width : 100%;
-  margin: 10px;
-}
-
-.gunChatContacts{
-  margin-top: 20px;
-  width: 100%;
 }

@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import Gun from 'gun/gun';
 import './chat.css'
-import GunContacts from './contacts/contacts.js';
+import ChatSidebar from './sidebar/sidebar.js'
 
 class GunChat extends Component {
 
@@ -60,7 +60,7 @@ class GunChat extends Component {
       privateChannelNav.style.display = 'none';
 
       const otherPeerKeys = await this.state.otherPeer.then()
-      const otherPeerEpub = otherPeerKeys.epub;
+      const otherPeerEpub = otherPeerKeys ? otherPeerKeys.epub : null;
       const addMessageToChat = this.addMessageToChat;
 
       let loadedMsgs = {};
@@ -245,21 +245,24 @@ class GunChat extends Component {
         peerInfo : peerInfo
       })
 
-      gun.get('pchannel').get(channel.key).get('latest').put({
-        msg : JSON.stringify(encMsg),
-        user : gun.user().is.alias,
-        time : time,
-      })
+      if(!peerInfo){
+        gun.get('pchannel').get(channel.key).get('latest').put({
+          msg : JSON.stringify(encMsg),
+          user : gun.user().is.alias,
+          time : time,
+          peerInfo : peerInfo
+        })
 
-      //PUBLIC FOR NOTIFICATIONS
-      if(channel.peers){
-        for(let pubKey in channel.peers){
-          if(pubKey != '_' && channel.peers[pubKey] && channel.peers[pubKey] != gun.user().is.alias){
-            gun.get('pchannel').get(channel.key).get('peers').get(channel.peers[pubKey]).get('new').get(time).put({
-              msg : encMsg,
-              user : gun.user().is.alias,
-              time : time,
-            })
+        //PUBLIC FOR NOTIFICATIONS
+        if(channel.peers){
+          for(let pubKey in channel.peers){
+            if(pubKey != '_' && channel.peers[pubKey] && channel.peers[pubKey] != gun.user().is.alias){
+              gun.get('pchannel').get(channel.key).get('peers').get(channel.peers[pubKey]).get('new').get(time).put({
+                msg : encMsg,
+                user : gun.user().is.alias,
+                time : time,
+              })
+            }
           }
         }
       }
@@ -308,6 +311,9 @@ class GunChat extends Component {
         gun.user().get('pchannel').get(this.state.currentChannel.key).get('peers').get(msg.peerInfo.pubKey).put(msg.peerInfo.alias);
       }else if(msg.peerInfo.action == 'leave'){
         gun.user().get('pchannel').get(this.state.currentChannel.key).get('peers').get(msg.peerInfo.pubKey).put(null);
+      }else if(msg.peerInfo.action == 'invited'){
+        gun.user().get('pchannel').get(this.state.currentChannel.key).get('peers').get(msg.peerInfo.pubKey).put(msg.peerInfo.alias);
+        newMsg.style.display = 'none';
       }
     }
 
@@ -335,12 +341,23 @@ class GunChat extends Component {
     const peerByAliasData = await gun.get('~@' + alias).once();
     if(peerByAliasData){
       const peerPubKey = Object.keys(peerByAliasData)[1].substr(1);
-      this.connectToPrivatePeer(alias, (peerPubKey) => {
-        let inviteMsg = "You are invited to join " + currentChannel.name;
-        currentChannel['invitedBy'] = gun.user().is.pub;
-        this.sendMessageToPrivatePeer(inviteMsg, currentChannel);
-        gun.user().get('pchannel').get(currentChannel.key).get('peers').get(peerPubKey).put(alias);
-      });
+      const otherPeerKeys = await gun.user(peerPubKey).then()
+      const otherPeerEpub = otherPeerKeys.epub;
+      const sec = await Gun.SEA.secret(otherPeerEpub, gun.user()._.sea);
+      const ePair = await Gun.SEA.encrypt(JSON.stringify(currentChannel.pair), sec);
+      let decPair = currentChannel.pair;
+      let eChannel = currentChannel;
+      eChannel["pair"] = ePair;
+      gun.get(peerPubKey).get('invites').get('pchannel').get(gun.user()._.sea.pub).get(currentChannel.key).put(JSON.stringify(eChannel));
+      currentChannel["pair"] = decPair;
+      this.sendMessageToChannel(alias + "has been invited.", currentChannel, {pubKey : peerPubKey, alias : alias, action : "invited"});
+      // OLD INVITE METHOD THROUGH MESSAGING
+      // this.connectToPrivatePeer(alias, (peerPubKey) => {
+      //   let inviteMsg = "You are invited to join " + currentChannel.name;
+      //   currentChannel['invitedBy'] = gun.user().is.pub;
+      //   this.sendMessageToPrivatePeer(inviteMsg, currentChannel);
+      //   gun.user().get('pchannel').get(currentChannel.key).get('peers').get(peerPubKey).put(alias);
+      // });
     }
   }
 
@@ -387,7 +404,7 @@ class GunChat extends Component {
     return (
       <div id="gunChat">
 
-        <GunContacts
+        <ChatSidebar
          gun={this.props.gun}
          connectToPrivatePeer={this.connectToPrivatePeer}
          sendMessageToPrivatePeer={this.sendMessageToPrivatePeer}

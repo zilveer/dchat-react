@@ -1,133 +1,25 @@
 import React, { Component } from 'react';
-import './contacts.css'
+import './channels.css'
 import Gun from 'gun/gun';
+import ChannelInvites from './invites.js';
 
 
-class GunContacts extends Component {
+class ChatChannels extends Component {
 
   constructor(props) {
     super(props);
-    this.loadUserContacts = this.loadUserContacts.bind(this);
     this.loadUserChannels = this.loadUserChannels.bind(this);
-    this.createContact = this.createContact.bind(this);
     this.createChannel = this.createChannel.bind(this);
-    this.handleAddContactClick = this.handleAddContactClick.bind(this);
-    this.handleContactClick = this.handleContactClick.bind(this);
     this.handleCreateChannelClick = this.handleCreateChannelClick.bind(this);
     this.state = {
       channels : {},
-      contacts : {}
     }
   }
 
   componentDidMount(){
     let gun = this.props.gun;
-    // RESET CHANNELS
     // gun.user().get('pchannel').put(null);
-
-    //LOAD ALL CONTACTS IN SIDEBAR
-    this.loadUserContacts();
-    //LOAD ALL CHANNELS in Sidebar
     this.loadUserChannels();
-
-  }
-
-  async loadUserContacts(){
-    let gun = this.props.gun;
-    let connectToPrivatePeer = this.props.connectToPrivatePeer;
-    gun.user().get('contacts').on((contacts) => {
-      if(contacts){
-        for(let peerPub in contacts){
-          if(!this.state.contacts[peerPub]){
-            gun.user().get('contacts').get(peerPub).get('name').once((alias) => {
-              let contactsState = this.state.contacts;
-              contactsState[peerPub] = alias;
-              this.setState({channels : contactsState})
-              //CREATE CONTACT ELEMENT
-              let newContactEl = document.createElement('div');
-              newContactEl.className = 'contact';
-              newContactEl.id = peerPub;
-              //CONTACT INFO SECTION (NAME AND NOTIFCATIONS)
-              let newContactInfo = document.createElement('div');
-              newContactInfo.className = 'contactInfo';
-              newContactEl.appendChild(newContactInfo);
-              //CONTACT NAME
-              let newContactName = document.createElement('div');
-              newContactName.className = 'contactName';
-              newContactName.textContent = alias;
-              newContactInfo.appendChild(newContactName);
-              //CONTACT Notifications
-              let newContactNotif = document.createElement('div');
-              newContactNotif.className = 'contactNotif';
-              newContactInfo.appendChild(newContactNotif);
-              //CONTACT LATEST MESSAGE
-              let newContactLatest = document.createElement('div');
-              newContactLatest.className = 'contactLatest';
-              newContactInfo.appendChild(newContactLatest);
-              //CONTACT MENU
-              let newContactMenu = document.createElement('div');
-              newContactMenu.className = 'contactMenu';
-              newContactMenu.innerHTML = '&#8942;';
-              newContactEl.appendChild(newContactMenu)
-
-              let contactList = document.getElementById('contactsList');
-              contactList.appendChild(newContactEl);
-
-              newContactEl.addEventListener('click', () => {
-                connectToPrivatePeer(alias);
-              })
-
-              //LOAD NOTIFCATIONS (UNREAD MESSAGE COUNT)
-              gun.get('pchat').get(gun.user().is.alias).get(alias).get('new').on((msgs) => {
-                if(msgs){
-                  let msgCount = 0;
-                  for(let time in msgs){
-                    if(time != '_' && msgs[time]){
-                      msgCount += 1;
-                    }
-                  }
-                  if(msgCount > 0){
-                    newContactNotif.style.display = 'block';
-                    newContactNotif.textContent = msgCount
-                  }else{
-                    newContactNotif.style.display = 'none';
-                  }
-                }
-              })
-
-              //LOAD LATEST MESSAGE
-              let latestTime = null;
-              gun.get('pchat').get(gun.user().is.alias).get(alias).get('latest').on(async function(msg){
-                if(msg && latestTime != msg.time){
-                  let msgText = msg.msg;
-                  if(typeof msgText == 'string'){
-                    msgText = JSON.parse(msgText);
-                  }
-                  const peerByAliasData = await gun.get('~@' + alias).once();
-                  const peerPubKey = Object.keys(peerByAliasData)[1].substr(1);
-                  const peerKeys = await gun.user(peerPubKey).then()
-                  const peerEpub = peerKeys.epub;
-                  const sec = await Gun.SEA.secret(peerEpub, gun.user()._.sea)
-                  newContactLatest.textContent = await Gun.SEA.decrypt(msgText, sec);
-                  latestTime = msg.time;
-                }
-              })
-
-            })
-          }
-        }
-      }
-    })
-  }
-
-  async createContact(contactName){
-    document.getElementById('contactsInput').value = "";
-    let gun = this.props.gun;
-    const peerByAliasData = await gun.get('~@' + contactName).once();
-    if(peerByAliasData){
-      let peerPub = Object.keys(peerByAliasData)[1].substr(1);
-      gun.user().get('contacts').get(peerPub).get('name').put(contactName);
-    }
   }
 
   async loadUserChannels(){
@@ -137,13 +29,14 @@ class GunContacts extends Component {
     gun.user().get('pchannel').on((channels) => {
       if(channels){
         for(let channelKey in channels){
+          // console.log(channels[channelKey])
           if(channels[channelKey] && !this.state.channels[channelKey]){
             gun.user().get('pchannel').get(channelKey).get('name').once((channelName) => {
               if(channelName){
                 let channelsState = this.state.channels;
                 channelsState[channelKey] = channelName;
                 this.setState({channels : channelsState})
-                
+
                 gun.user().get('pchannel').get(channelKey).get('pair').once(async function(ePair){
                   // console.log("Channel Pair", ePair);
                   if(typeof ePair == 'string'){
@@ -160,6 +53,11 @@ class GunContacts extends Component {
                   let newChannelInfo = document.createElement('div');
                   newChannelInfo.className = 'channelInfo';
                   newChannelEl.appendChild(newChannelInfo);
+                  //CREATE CHANNEL USER COUNT
+                  let newChannelUserCount = document.createElement('div');
+                  newChannelUserCount.innerHTML = 3 + '&#x1F464;';
+                  newChannelUserCount.className = 'channelUserCount';
+                  newChannelInfo.appendChild(newChannelUserCount)
                   //CREATE CHANNEL NAME
                   let newChannelName = document.createElement('div');
                   newChannelName.className = 'channelName';
@@ -187,6 +85,7 @@ class GunContacts extends Component {
                   let channelList = document.getElementById('channelsList');
                   channelList.appendChild(newChannelEl);
 
+                  //CONNECT TO CHANNEL ON CLICK
                   newChannelEl.addEventListener('click', async function(){
                     let peers = await gun.user().get('pchannel').get(channelKey).get('peers').once();
                     connectToChannel({
@@ -219,13 +118,23 @@ class GunContacts extends Component {
                     }
                   })
 
+                  //LOAD USER COUNT
+                  let peerCount = 0;
+                  let peers = {};
+                  gun.user().get('pchannel').get(channelKey).get('peers').map().once((peer) => {
+                    if(!peers[peer]){
+                      peerCount += 1;
+                      peers[peer] = peer;
+                      newChannelUserCount.innerHTML = peerCount + '&#x1F464;';
+                    }
+                  })
+
                   //LOAD NOTIFCATIONS (UNREAD MESSAGE COUNT)
                   gun.get('pchannel').get(channelKey).get('peers').get(gun.user().is.alias).get('new').on((msgs) => {
                     if(msgs){
                       let msgCount = 0;
                       for(let time in msgs){
                         if(time != '_' && msgs[time]){
-                          console.log(time);
                           msgCount += 1;
                         }
                       }
@@ -266,7 +175,7 @@ class GunContacts extends Component {
     let channelsInput = document.getElementById('channelsInput')
     channelsInput.value = "";
     let gun = this.props.gun;
-    //GENERATE A RANDOM KEY FOR THE NEW CHANNEL
+    //GENERATE A SEA PAIR FOR THE NEW CHANNEL
     let channelPair = await Gun.SEA.pair()
     let channelKey = channelPair.epub;
     let sec = await Gun.SEA.secret(channelKey, gun.user()._.sea);
@@ -274,17 +183,6 @@ class GunContacts extends Component {
     gun.user().get('pchannel').get(channelKey).get('pair').put(encPair);
     gun.user().get('pchannel').get(channelKey).get('name').put(channelName);
     gun.user().get('pchannel').get(channelKey).get('peers').get(gun.user().is.pub).put(gun.user().is.alias);
-  }
-
-  handleContactClick(e){
-    let username = e.target.childNodes[0].textContent;
-    this.props.connectToPrivatePeer(username);
-  }
-
-  handleAddContactClick(){
-    let contactsInput = document.getElementById('contactsInput');
-    let newContactName = contactsInput.value;
-    this.createContact(newContactName);
   }
 
   handleCreateChannelClick(){
@@ -295,31 +193,25 @@ class GunContacts extends Component {
 
   render() {
     return (
-      <div id="gunChatSidebar">
-
-        <div className="gunChatChannels">
-          <div className="channelsHeader">Channels</div>
-          <div className="channelsInputContainer">
-            <input id="channelsInput" placeholder="Create a Channel"></input>
-            <div className="channelsInputSubmit" onClick={this.handleCreateChannelClick}>Create</div>
-          </div>
-          <div id="channelsList">
-
-          </div>
+      <div className="gunChatChannels">
+        <div className="channelsHeader">Channels</div>
+        <div className="channelsInputContainer">
+          <input id="channelsInput" placeholder="Create a Channel"></input>
+          <div className="channelsInputSubmit" onClick={this.handleCreateChannelClick}>Create</div>
         </div>
+        <div id="channelsList">
 
-        <div className="gunChatContacts">
-          <div className="contactsHeader">Contacts</div>
-          <div className="contactsInputContainer">
-            <input id="contactsInput" placeholder="Add a Domain to Chat"></input>
-            <div id="contactsInputSubmit" onClick={this.handleAddContactClick}>Add</div>
-          </div>
-          <div id="contactsList">
-          </div>
         </div>
+        <ChannelInvites
+          gun={this.props.gun}
+          connectToChannel={this.props.connectToChannel}
+          sendMessageToChannel={this.props.sendMessageToChannel}
+        />
       </div>
     )
   }
+
+
 }
 
-export default GunContacts;
+export default ChatChannels;
