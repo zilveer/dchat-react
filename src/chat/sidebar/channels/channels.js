@@ -55,7 +55,7 @@ class ChatChannels extends Component {
                   newChannelEl.appendChild(newChannelInfo);
                   //CREATE CHANNEL USER COUNT
                   let newChannelUserCount = document.createElement('div');
-                  newChannelUserCount.innerHTML = 3 + '&#x1F464;';
+                  newChannelUserCount.innerHTML = 1 + '&#x1F464;';
                   newChannelUserCount.className = 'channelUserCount';
                   newChannelInfo.appendChild(newChannelUserCount)
                   //CREATE CHANNEL NAME
@@ -121,10 +121,10 @@ class ChatChannels extends Component {
                   //LOAD USER COUNT
                   let peerCount = 0;
                   let peers = {};
-                  gun.user().get('pchannel').get(channelKey).get('peers').map().once((peer) => {
-                    if(!peers[peer]){
+                  gun.user().get('pchannel').get(channelKey).get('peers').map().on((peer) => {
+                    if(peer && !peers[peer.alias] && peer.joined){
                       peerCount += 1;
-                      peers[peer] = peer;
+                      peers[peer.alias] = peer;
                       newChannelUserCount.innerHTML = peerCount + '&#x1F464;';
                     }
                   })
@@ -182,7 +182,10 @@ class ChatChannels extends Component {
     let encPair = await Gun.SEA.encrypt(JSON.stringify(channelPair), sec);
     gun.user().get('pchannel').get(channelKey).get('pair').put(encPair);
     gun.user().get('pchannel').get(channelKey).get('name').put(channelName);
-    gun.user().get('pchannel').get(channelKey).get('peers').get(gun.user().is.pub).put(gun.user().is.alias);
+    gun.user().get('pchannel').get(channelKey).get('peers').get(gun.user().is.pub).put({
+      alias : gun.user().is.alias,
+      joined : true
+    });
   }
 
   handleCreateChannelClick(){

@@ -29,7 +29,7 @@ class ChannelInvites extends Component {
           channelInvites.get(peerPub).on(async function(channels){
             for(let channelKey in channels){
               if(channelKey != '_' && channels[channelKey]){
-                let channel = channels[channelKey];
+                let channel = channels[channelKey]
                 let peerKeys = await gun.user(peerPub).then();
                 let peerEpub = peerKeys ? peerKeys.epub : null;
                 if(typeof channel == 'string'){
@@ -37,11 +37,11 @@ class ChannelInvites extends Component {
                   let sec = await Gun.SEA.secret(peerEpub, gun.user()._.sea);
                   channel.pair = await Gun.SEA.decrypt(channel.pair, sec);
                 }
-                if(!document.getElementById(channel.key)){
+                if(!document.getElementById('invite-' + channel.key)){
                   //CREATE CHANNEL INVITE ELEMENT
                   let cInviteEl = document.createElement('div');
                   cInviteEl.className = 'invite';
-                  cInviteEl.id = channel.key;
+                  cInviteEl.id = 'invite-' + channel.key;
 
                   //INVITE CONTENT
                   let inviteContent = document.createElement('div');
@@ -95,15 +95,23 @@ class ChannelInvites extends Component {
                   channelList.appendChild(cInviteEl);
 
                   //DENY CHANNEL INVITE
-                  inviteDeny.addEventListener('click', () => {
-                    channelInvites.get(peerPub).get(channel.key).put(null);
+                  inviteDeny.addEventListener('click', async function(){
+                    console.log(channel)
+                    await channelInvites.get(peerPub).get(channel.key).put(null);
                     cInviteEl.remove();
                   })
 
                   //ACCEPT CHANNEL INVITE
                   inviteAccept.addEventListener('click', async function(){
                     gun.user().get('pchannel').get(channel.key).get('name').put(channel.name);
-                    gun.user().get('pchannel').get(channel.key).get('peers').get(gun.user().is.pub).put(gun.user().is.alias);
+                    gun.user().get('pchannel').get(channel.key).get('peers').get(gun.user().is.pub).put({
+                      alias : gun.user().is.alias,
+                      joined : true
+                    });
+                    gun.user().get('pchannel').get(channel.key).get('peers').get(peerPub).put({
+                      alias : peerKeys.alias,
+                      joined : true
+                    })
                     let sec = await Gun.SEA.secret(channel.key, gun.user()._.sea);
                     let encPair = await Gun.SEA.encrypt(JSON.stringify(channel.pair), sec);
                     gun.user().get('pchannel').get(channel.key).get('pair').put(encPair);
@@ -120,11 +128,14 @@ class ChannelInvites extends Component {
                       channelInvites.get(peerPub).get(channel.key).put(null);
                       cInviteEl.remove();
                       //CONNECT TO CHANNEL
+                      channel.peers[gun.user().is.pub] = channel.peers[gun.user().is.pub] ? channel.peers[gun.user().is.pub] : {alias : gun.user().is.alias};
+                      channel.peers[gun.user().is.pub].joined = true;
                       connectToChannel(channel)
                       let joinMsg = gun.user().is.alias + " has joined the chat!";
                       sendMessageToChannel(joinMsg, channel, {pubKey : gun.user().is.pub, alias : gun.user().is.alias, action : "join"});
                     })
                   })
+
                 }
 
               }

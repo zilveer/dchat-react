@@ -7,6 +7,7 @@ import GunAuth from './auth/auth.js';
 import GunChat from './chat/chat.js';
 
 require('gun/sea');
+require('gun/lib/open')
 require('gun/lib/load');
 
 //URL should be replaced with Unstoppable's GUN Server.
