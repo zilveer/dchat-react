@@ -46,7 +46,7 @@ class App extends Component {
     return (
       <div className="gunChatApp">
 
-        <h1 className="gunChatHeader">Unstoppable Chat!</h1>
+        <h1 className="gunChatHeader">D.Chat w/ React.js</h1>
 
         <GunAuth gun={gun} />
         <div id="chatComponent">

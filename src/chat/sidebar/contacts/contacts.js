@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import './contacts.css'
 import Gun from 'gun/gun';
+import ContactInvites from './invites.js';
 
 class ChatContacts extends Component {
 
@@ -141,6 +142,11 @@ class ChatContacts extends Component {
         </div>
         <div id="contactsList">
         </div>
+        <ContactInvites
+          gun={this.props.gun}
+          connectToPrivatePeer={this.props.connectToPrivatePeer}
+          sendMessageToPrivatePeer={this.props.sendMessageToPrivatePeer}
+        />
       </div>
     )
   }
